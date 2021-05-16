@@ -2,6 +2,7 @@
 images/
 pdfs/
 .DS_Store
+ignore-these/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
