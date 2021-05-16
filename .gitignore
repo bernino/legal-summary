@@ -1,6 +1,7 @@
 # Project relevant
 images/
 pdfs/
+summaries/
 .DS_Store
 ignore-these/
 
