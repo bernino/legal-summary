@@ -18,21 +18,21 @@ from transformers import *
 # model=GPT2LMHeadModel.from_pretrained('gpt2')
 
 # Instantiating the model and tokenizer with Google's T5
-# t5_model = T5ForConditionalGeneration.from_pretrained('t5-small')
 # model_name = 't5-base'
-# tokenizer_t5 = T5Tokenizer.from_pretrained('t5-small')
+# model_name = 'SEBIS/legal_t5_small_summ_en'
+# t5_model = T5ForConditionalGeneration.from_pretrained(model_name)
+# tokenizer_t5 = T5Tokenizer.from_pretrained(model_name)
 
 # This uses the bert-large-uncased model
 # bert_legal_model = Summarizer()
 # result = model(text, min_length=60, ratio=0.01)
-# print(result)
 
 # Load model, model config and tokenizer via Transformers
 # Change model as you see fit, see huggingface.co
 # model_name = 'distilbert-base-uncased'
-# model_name = 'saibo/legal-roberta-base'
-model_name = 'nlpaueb/legal-bert-base-uncased'
-# model_name = 'nsi319/legal-pegasus'
+# model_name = 'nlpaueb/legal-bert-base-uncased'
+model_name = 'laxya007/gpt2_legal'
+# model_name = 'facebook/bart-large-cnn'
 
 # The setup of huggingface.co
 custom_config = AutoConfig.from_pretrained(model_name)
@@ -41,6 +41,11 @@ custom_tokenizer = AutoTokenizer.from_pretrained(model_name)
 custom_model = AutoModel.from_pretrained(model_name, config=custom_config)
 bert_legal_model = Summarizer(custom_model=custom_model, custom_tokenizer=custom_tokenizer)
 print('Using model {}\n'.format(model_name))
+
+# setup FB Classifier
+classifier = pipeline("zero-shot-classification",
+                      model="facebook/bart-large-mnli")
+candidate_labels = ['employment', 'confidentiality', 'NDA', 'partnership', 'contractor', 'referral', 'tax']
 
 # model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 # padding = "max_length" 
@@ -161,7 +166,7 @@ for filename in list_of_files:
         #                                 min_length=10,
         #                                 max_length=500)
         # summary = [custom_tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids][0]
-        summary = bert_legal_model(text, ratio = 0.1, min_length=10, max_length = 300)
+        summary = bert_legal_model(text, ratio = 0.01)
         # summary = tokenizer_t5.decode(summary_ids[0], skip_special_tokens=True)
         summary_text += str(summary) + "\n\n"
         print("Summary:")
@@ -198,11 +203,15 @@ for filename in list_of_files:
     # Extract keywords from all content
     # TODO: clean result for things such as agreement, Andrew, Martin, ...
     keywords = custom_kw_extractor.extract_keywords(content)
+    keywords2 = classifier(summary, candidate_labels, multi_label=True)
+
     keyword_list = ""
     print("\nKeywords:")
     for kw in keywords:
         keyword_list += str(kw[0]).lower() + " with prob " + str(kw[1]) + "\n"
     print(keyword_list)
+    print(keywords2['labels'])
+    print(keywords2['scores'])
 
     # write all to file for inspection
     all_text = "-------- The Keywords --------\n" + str(keyword_list) + "\n\n\n" \
