@@ -9,6 +9,7 @@ import yake
 # from transformers import AutoTokenizer, AutoModelForPreTraining, AutoModel
 from summarizer import Summarizer,TransformerSummarizer
 from transformers import *
+import numpy as np
 
 # from https://theaidigest.in/summarize-text-document-using-transformers-and-bert/
 
@@ -202,19 +203,25 @@ for filename in list_of_files:
 
     # Extract keywords from all content
     # TODO: clean result for things such as agreement, Andrew, Martin, ...
+    # Also, not sure if this should be done on as much or as little corpus as possible?
     keywords = custom_kw_extractor.extract_keywords(content)
-    keywords2 = classifier(summary, candidate_labels, multi_label=True)
+    keywords2 = classifier(content, candidate_labels, multi_label=True)
 
     keyword_list = ""
     print("\nKeywords:")
+
     for kw in keywords:
         keyword_list += str(kw[0]).lower() + " with prob " + str(kw[1]) + "\n"
-    print(keyword_list)
-    print(keywords2['labels'])
-    print(keywords2['scores'])
 
-    # write all to file for inspection
-    all_text = "-------- The Keywords --------\n" + str(keyword_list) + "\n\n\n" \
+    print(keyword_list)
+
+    # make a dictionary of the keywords and choose the top
+    combined_keywords = dict(zip(keywords2['labels'],keywords2['scores']))
+    top_keywords = dict((k, v) for k, v in combined_keywords.items() if v > 0.4)
+    print(top_keywords)
+
+    # write all to file for inspection and storage
+    all_text = "-------- The Keywords --------\n" + str(keyword_list) + str(top_keywords) + "\n\n\n" \
         + "-------- The Summary --------\n" + str(summary) + "\n\n\n" \
         + "-------- The Larger Summary --------\n" + str(summary_text) + "\n\n\n" \
         + "-------- The Original Content --------\n" + str(content)
