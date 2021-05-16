@@ -12,29 +12,6 @@ from transformers import *
 
 # from https://theaidigest.in/summarize-text-document-using-transformers-and-bert/
 
-# Install:
-# - on a mac: brew install tesseract and rust
-# - pip3 install pytesseract, pdf2image, nltk, transformers, yake, bert-extractive-summarizer
-# - if conda env : conda install pytorch 
-# On M1 Mac chip, its easier to install scikit-learn, numpy etc. with conda's pre-compiled packages
-
-# RTFM:
-# To summarise legal docs. Or other docs. But works with legal docs as well,
-# which is a special case of difficult docs.
-#
-# legal-summary traverses a folder for PDFs and OCRs them
-# then extracts all paragraphs and summarises them using e.g. Google's T5 GAN ML neural net
-# then summarises the concatenated summaries for an overview (higher quality than summarising
-# the entire document). Other ML nets can be used, see Hugging Face models.
-#
-# We cannot use the usual statistical summaries methods like TextRank etc.
-# because a legal doc isn't such that more occurence of a word/sentence means its more
-# important... Equally, a single occurence of a word or sentence may be extremely important,
-# so we must record these as well.
-#
-# We must rewrite each paragraph to a smaller paragraph with the same meaning, thus
-# using a GAN. 
-
 # First, some setup
 # Instantiating the model and tokenizer with gpt-2
 # tokenizer=GPT2Tokenizer.from_pretrained('gpt2')
@@ -42,6 +19,7 @@ from transformers import *
 
 # Instantiating the model and tokenizer with Google's T5
 # t5_model = T5ForConditionalGeneration.from_pretrained('t5-small')
+# model_name = 't5-base'
 # tokenizer_t5 = T5Tokenizer.from_pretrained('t5-small')
 
 # This uses the bert-large-uncased model
@@ -51,15 +29,21 @@ from transformers import *
 
 # Load model, model config and tokenizer via Transformers
 # Change model as you see fit, see huggingface.co
-model_name = 'saibo/legal-roberta-base'
-# model_name = 'nlpaueb/legal-bert-base-uncased'
+# model_name = 'distilbert-base-uncased'
+# model_name = 'saibo/legal-roberta-base'
+model_name = 'nlpaueb/legal-bert-base-uncased'
 # model_name = 'nsi319/legal-pegasus'
+
+# The setup of huggingface.co
 custom_config = AutoConfig.from_pretrained(model_name)
 custom_config.output_hidden_states=True
 custom_tokenizer = AutoTokenizer.from_pretrained(model_name)
 custom_model = AutoModel.from_pretrained(model_name, config=custom_config)
-
 bert_legal_model = Summarizer(custom_model=custom_model, custom_tokenizer=custom_tokenizer)
+print('Using model {}\n'.format(model_name))
+
+# model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+# padding = "max_length" 
 
 # YAKE
 # Yet Another Keyword Extractor (Yake) library selects the most important keywords using 
@@ -103,7 +87,7 @@ for filename in list_of_files:
     file = os.path.splitext(os.path.basename(filename))[0]
     pages = pdf2image.convert_from_path(pdf_path=filename, dpi=400, size=(1654,2340))
     total_pages += len(pages)
-    print("\nProcessing the next {} pages".format(len(pages)))
+    print("\nProcessing the next {} pages...\n".format(len(pages)))
 
     # Then save all pages as images and convert them to text except the last page
     # TODO: create this as a function
@@ -169,7 +153,15 @@ for filename in list_of_files:
 
         # Decoding the tensor and printing the summary
         # t5_summary = tokenizer_t5.decode(summary_ids[0], skip_special_tokens=True)
-        summary = bert_legal_model(text, ratio = 0.01)
+        # input_tokenized = custom_tokenizer.encode(text, return_tensors='pt',padding=padding,pad_to_max_length=True, max_length=6144,truncation=True)
+        # summary_ids = model.generate(input_tokenized,
+        #                                 num_beams=4,
+        #                                 no_repeat_ngram_size=3,
+        #                                 length_penalty=2,
+        #                                 min_length=10,
+        #                                 max_length=500)
+        # summary = [custom_tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids][0]
+        summary = bert_legal_model(text, ratio = 0.1, min_length=10, max_length = 300)
         # summary = tokenizer_t5.decode(summary_ids[0], skip_special_tokens=True)
         summary_text += str(summary) + "\n\n"
         print("Summary:")
@@ -188,7 +180,15 @@ for filename in list_of_files:
     #                                     early_stopping=False)
 
     # t5_summary = tokenizer_t5.decode(summary_ids[0], skip_special_tokens=True)
-    summary = bert_legal_model(content, ratio=0.01)
+    summary = bert_legal_model(content, ratio=0.1)
+    # input_tokenized = custom_tokenizer.encode(content, return_tensors='pt',padding=padding,pad_to_max_length=True, max_length=6144,truncation=True)
+    # summary_ids = model.generate(input_tokenized,
+    #                                 num_beams=4,
+    #                                 no_repeat_ngram_size=3,
+    #                                 length_penalty=2,
+    #                                 min_length=150,
+    #                                 max_length=500)
+    # summary = [custom_tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids][0]
 
     # print("\nT5 complete summary:")
     # print(t5_summary)
